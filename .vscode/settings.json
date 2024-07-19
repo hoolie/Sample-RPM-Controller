@@ -1,0 +1,13 @@
+{
+    "files.associations": {
+        ".fantomasignore": "ignore",
+        "stdio.h": "c",
+        "io.h": "c",
+        "sfr_defs.h": "c",
+        "rpm_measurement.h": "c",
+        "pwm.h": "c",
+        "uart.h": "c",
+        "utils.h": "c",
+        "pi_controller.h": "c"
+    }
+}
