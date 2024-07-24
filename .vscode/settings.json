@@ -8,6 +8,8 @@
         "pwm.h": "c",
         "uart.h": "c",
         "utils.h": "c",
-        "pi_controller.h": "c"
+        "pi_controller.h": "c",
+        "string.h": "c",
+        "shell.h": "c"
     }
 }

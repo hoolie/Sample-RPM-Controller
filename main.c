@@ -11,6 +11,7 @@
 #include "uart.h"
 #include "utils.h"
 #include "pi_controller.h"
+#include "shell.h"
 
 volatile uint16_t target_rpm = 0;
 ControllerState rpmState;
@@ -22,7 +23,6 @@ uint8_t rpm_controller(uint16_t target_rpm, uint16_t current_rpm)
     rpmState = pi_controller_run(rpmState, current_rpm, target_rpm);
     return (uint8_t)constrain_int16_t(rpmState.output, MIN_OUTPUT, MAX_OUTPUT);
 }
-
 
 ISR(TIMER0_OVF_vect)
 {
@@ -50,11 +50,58 @@ void process_command(char command, char *buffer, uint8_t length)
         logging ^= 1; // enable logging
         break;
     default:
-        uart_write(">>> unknown command: ");
-        uart_write_line(buffer);
+        printf(">>> unknown command: ");
+        puts(buffer);
     }
 }
+int HelloWorld(char *args, int len)
+{
+    puts("hello world!");
+    return EOF;
+}
+int counter = 0;
+int Monitor(char *args, int len)
+{
 
+    int key = getchar();
+    switch (key)
+    {
+    case '+':
+        target_rpm++;
+        break;
+
+    case '-':
+        target_rpm--;
+        break;
+    case 'x':
+        counter = 0;
+        printf("\033[2J");
+        printf("\033[f");
+        printf("\033[?25h");
+        return EOF;
+
+    default:
+        break;
+    }
+    if (counter == 0)
+    {
+        printf("\033[2J");
+        printf("\033[?25l");
+    }
+    if (counter++ % 20)
+        return NULL;
+    printf("\033[f");
+    uint16_t rpm = rpm_measurement_get();
+    printf("rpm: %d\033[K\n", rpm);
+    printf("soll: %d\033[K\n", target_rpm);
+    printf("e: %d\033[K\n", rpmState.e);
+    printf("esum: %d\033[K\n", rpmState.esum);
+    printf("p: %ld\033[K\n", rpmState.p);
+    printf("i: %ld\033[K\n", rpmState.i);
+    printf("output: %d\033[K\n", rpmState.output);
+    printf("OCR0A: %d\033[K\n", OCR0A);
+    return NULL;
+}
 int main()
 {
 
@@ -63,37 +110,57 @@ int main()
     rpm_measurement_init();
     uart_init(&process_command);
 
-
     sei();
-    uart_transmit('A');
-    puts("hello world\0");
+
+    printf("\033[2J");
+    printf("\033[f");
+    printf("\033[?25h");
+    puts("hello world");
     printf("->");
     DDRB |= (1 << PB5);
+    char buffer[30];
+    uint16_t counter = 0;
+    AddCommand("hello", HelloWorld);
+    AddCommand("mon", Monitor);
     while (1)
     {
-
-        PORTB ^= (1 << PB5);
-        _delay_ms(500);
-        if (logging)
+        if (counter % 500 == 0)
         {
-
-            uint16_t rpm = rpm_measurement_get();
-            // uart_transmit(period >> 8);
-            // uart_transmit(period & 0xFF);
-            uart_write("\033[2J");
-            uart_write("\033[f");
-            printf("rpm: %d\n", rpm);
-            printf("soll: %d\n", target_rpm);
-            printf("e: %d\n", rpmState.e);
-            printf("esum: %d\n", rpmState.esum);
-            printf("p: %ld\n", rpmState.p);
-            printf("i: %ld\n", rpmState.i);
-            printf("output: %d\n", rpmState.output);
-            printf("OCR0A: %d\n", OCR0A);
-            uart_write("->");
-            // strncpy(buffer, rx_buffer, buffer_index);
-            // buffer[buffer_index] = '\0';
-            // uart_write(buffer);
+            PORTB ^= (1 << PB5);
         }
+
+        counter++;
+        _delay_ms(1);
+        loop();
+        //        if (get_line(buffer, 30) != 0) {
+        //
+        //            // Process the received line
+        //            // For example, echo it back
+        //            printf("Received: %s\n", buffer);
+        //        } else {
+        //            //puts("0");
+        //        }
+        //        //printf("==> %d", res);
+        //        if (logging)
+        //        {
+        //
+        //            uint16_t rpm = rpm_measurement_get();
+        //            // uart_transmit(period >> 8);
+        //            // uart_transmit(period & 0xFF);
+        //            printf("\033[2J");
+        //            printf("\033[f");
+        //            printf("rpm: %d\n", rpm);
+        //            printf("soll: %d\n", target_rpm);
+        //            printf("e: %d\n", rpmState.e);
+        //            printf("esum: %d\n", rpmState.esum);
+        //            printf("p: %ld\n", rpmState.p);
+        //            printf("i: %ld\n", rpmState.i);
+        //            printf("output: %d\n", rpmState.output);
+        //            printf("OCR0A: %d\n", OCR0A);
+        //            printf("->");
+        //            // strncpy(buffer, rx_buffer, buffer_index);
+        //            // buffer[buffer_index] = '\0';
+        //            // uart_write(buffer);
+        //        }
     }
 }
