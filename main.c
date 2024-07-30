@@ -15,44 +15,13 @@
 #include "pwm.h"
 #include "uart.h"
 #include "utils.h"
-#include "pi_controller.h"
+#include "rpm_controller.h"
 #include "shell.h"
 #include "terminal.h"
 
-volatile uint16_t target_rpm = 0; /**< Target RPM value */
-ControllerState rpmState; /**< PI controller state */
-
-#define MAX_OUTPUT 255 /**< Maximum controller output */
-#define MIN_OUTPUT 0   /**< Minimum controller output */
-
-/**
- * @brief Runs the RPM controller.
- * 
- * @param target_rpm Target RPM value
- * @param current_rpm Current RPM value
- * @return uint8_t Controller output
- */
-uint8_t rpm_controller(uint16_t target_rpm, uint16_t current_rpm)
-{
-    rpmState = pi_controller_run(rpmState, current_rpm, target_rpm);
-    return (uint8_t)constrain_int16_t(rpmState.output, MIN_OUTPUT, MAX_OUTPUT);
-}
-
-/**
- * @brief Timer0 overflow interrupt service routine.
- */
-ISR(TIMER0_OVF_vect)
-{
-    uint16_t rpm = rpm_measurement_get();
-    uint8_t duty_cycle = rpm_controller(target_rpm, rpm);
-    pwm_set(duty_cycle);
-}
-
-uint8_t logging = 0; /**< Logging flag */
-
 /**
  * @brief Example command function that prints "hello world".
- * 
+ *
  * @param args Command arguments
  * @param len Length of arguments
  * @return int EOF on completion
@@ -63,26 +32,25 @@ int HelloWorld(char *args, size_t len)
     return EOF;
 }
 
-int counter = 0; /**< Counter for monitor command */
-
 /**
  * @brief Monitor command function.
- * 
+ *
  * @param args Command arguments
  * @param len Length of arguments
- * @return int 0 on success, EOF to exit
+ * @return int 0 to proceed, EOF to exit
  */
 int Monitor(char *args, size_t len)
 {
+    static int counter = 0; /**< Counter for monitor command */
     int key = getchar();
     switch (key)
     {
     case '+':
-        target_rpm++;
+        rpm_controller_inc();
         break;
 
     case '-':
-        target_rpm--;
+        rpm_controller_dec();
         break;
     case 'x':
         counter = 0;
@@ -101,10 +69,11 @@ int Monitor(char *args, size_t len)
     }
     if (counter++ % 20)
         return 0;
-    printf("\033[f");
+    terminal_reset_cursor();
     uint16_t rpm = rpm_measurement_get();
+    ControllerState rpmState = rpm_controller_get_state();
     printf("rpm: %d\033[K\n", rpm);
-    printf("soll: %d\033[K\n", target_rpm);
+    printf("soll: %d\033[K\n", rpm_controller_get_target_rpm());
     printf("e: %d\033[K\n", rpmState.e);
     printf("esum: %d\033[K\n", rpmState.esum);
     printf("p: %ld\033[K\n", rpmState.p);
@@ -116,21 +85,22 @@ int Monitor(char *args, size_t len)
 
 /**
  * @brief Main function.
- * 
+ *
  * @return int Program exit status
  */
 int main()
 {
-    rpmState = createNew(64, 4);
+
     pwm_init();
     rpm_measurement_init();
     uart_init();
+    rpm_controller_init(64, 8);
     sei();
 
     terminal_clear_screen();
     terminal_reset_cursor();
     terminal_enable_cursor();
-    puts("hello world");
+    puts("ATMega328p RPM Controller");
     printf("->");
     DDRB |= (1 << PB5);
     uint16_t counter = 0;
@@ -148,4 +118,3 @@ int main()
         shell_loop();
     }
 }
-
