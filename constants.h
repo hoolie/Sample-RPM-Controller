@@ -1,6 +1,10 @@
-#ifndef __AVR_ATmega328P__
-//#define __AVR_ATmega328P__
-#endif
+/**
+ * @file constants.h
+ * @brief Defines constants used in the program.
+ */
+
+/** CPU frequency in Hz */
 #define F_CPU 16000000UL  
-#define BAUD 250000UL
-#define MYUBRR F_CPU/16/BAUD-1
+
+/** Baud rate for UART communication */
+#define BAUD 1000000UL

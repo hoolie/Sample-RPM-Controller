@@ -10,6 +10,7 @@
         "utils.h": "c",
         "pi_controller.h": "c",
         "string.h": "c",
-        "shell.h": "c"
+        "shell.h": "c",
+        "terminal.h": "c"
     }
 }
